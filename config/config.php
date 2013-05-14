@@ -11,4 +11,4 @@
  */
 
 
-$GLOBALS['FE_MOD']['miscellaneous']['BgSlider'] = '\BgSlider\BgSlider';
+$GLOBALS['FE_MOD']['miscellaneous']['BgSlider'] = 'BgSlider';

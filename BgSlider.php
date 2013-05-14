@@ -10,10 +10,8 @@
  * @licence LGPL
  */
 
- 
-namespace Psi\BgSlider;
 
-class BgSlider extends \Module
+class BgSlider extends Module
 {
 
 	protected $strTemplate = 'mod_BgSlider';
@@ -26,9 +24,10 @@ class BgSlider extends \Module
 	 */
 	public function generate()
 	{
+
 		if (TL_MODE == 'BE')
 		{
-			$objTemplate = new \BackendTemplate('be_wildcard');
+			$objTemplate = new BackendTemplate('be_wildcard');
 
 			$objTemplate->wildcard = '### BG Slider ###';
 			$objTemplate->title = $this->headline;
@@ -46,14 +45,6 @@ class BgSlider extends \Module
 			return '';
 		}
 
-		// Get the file entries from the database
-		$this->objFiles = \FilesModel::findMultipleByIds($this->multiSRC);
-
-		if ($this->objFiles === null)
-		{
-			return '';
-		}
-
 		return parent::generate();
 	}
 
@@ -63,6 +54,7 @@ class BgSlider extends \Module
 	 */
 	protected function compile()
 	{
+
 		// add ID and cssClass to the script
 		if(!is_array($this->cssID)) $this->cssID = array('','');
 		$this->Template->domID = $this->cssID[0];
@@ -72,18 +64,47 @@ class BgSlider extends \Module
 		$objFiles = $this->objFiles;
 
 		// Get all images
-		while ($objFiles->next())
+		foreach ($this->multiSRC as $strFile)
 		{
 			// Continue if the files has been processed or does not exist
-			if (isset($images[$objFiles->path]) || !file_exists(TL_ROOT . '/' . $objFiles->path))
+			if (isset($images[$strFile]) || !file_exists(TL_ROOT . '/' . $strFile))
 			{
 				continue;
 			}
+            
+            //folders
+            if (is_dir(TL_ROOT . '/' . $strFile))
+            {
+                $arrSubfiles = scan(TL_ROOT. '/'. $strFile);
+                
+				if (empty($arrSubfiles))
+				{
+					continue;
+				}
 
-			// Single files
-			if ($objFiles->type == 'file')
-			{
-				$objFile = new \File($objFiles->path);
+				foreach ($arrSubfiles as $subFile)
+				{
+					// Skip subfolders
+					if (is_dir(TL_ROOT . '/'. $strFile . '/' . $subFile))
+					{
+						continue;
+					}
+
+					$objFile = new File( $strFile . '/' . $subFile);
+                    
+					if (!$objFile->isGdImage)
+					{
+						continue;
+					}
+
+					// Add the image
+					$images[$strFile . '/' . $subFile] = array('path'=>$strFile . '/' . $subFile, 'name'=>$objFile->basename, 'height'=>$objFile->height, 'width'=>$objFile->width);
+				}
+            }
+            //Files
+            else
+            {
+                $objFile = new File($strFile);
 
 				if (!$objFile->isGdImage)
 				{
@@ -91,40 +112,17 @@ class BgSlider extends \Module
 				}
 
 				// Add the image
-				$images[$objFiles->path] = array('path'=>$objFiles->path, 'name'=>$objFile->name, 'height'=>$objFile->height, 'width'=>$objFile->width);
-			}
+                $images[$strFile] = array('path'=>$strFile , 'name'=>$objFile->basename, 'height'=>$objFile->height, 'width'=>$objFile->width);
+            }
 
-			// Folders
-			else
-			{
-				$objSubfiles = \FilesModel::findByPid($objFiles->id);
-
-				if ($objSubfiles === null)
-				{
-					continue;
-				}
-
-				while ($objSubfiles->next())
-				{
-					// Skip subfolders
-					if ($objSubfiles->type == 'folder')
-					{
-						continue;
-					}
-
-					$objFile = new \File($objSubfiles->path);
-
-					if (!$objFile->isGdImage)
-					{
-						continue;
-					}
-
-					// Add the image
-					$images[$objSubfiles->path] = array('path'=>$objSubfiles->path, 'name'=>$objSubfiles->name, 'height'=>$objFile->height, 'width'=>$objFile->width);
-				}
-			}
 		}
-
+        
+        // change keys to int;
+        foreach($images as $img)
+		{
+			$tmp = array_pop($images);
+			array_unshift($images, $tmp);
+		}
 
 		// move the image with the alias to the front
 		foreach($images as $img)
@@ -136,7 +134,7 @@ class BgSlider extends \Module
 				break;
 			}
 		}
-
+        
 		$this->Template->images = $images;
 	}
 }
